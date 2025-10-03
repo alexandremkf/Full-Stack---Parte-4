@@ -2,6 +2,7 @@ const dummy = (blogs) => {
   return 1
 }
 
+// Retorna o total de likes
 const totalLikes = (blogs) => {
   return blogs.reduce((sum, blog) => sum + blog.likes, 0)
 }
@@ -14,8 +15,37 @@ const favoriteBlog = (blogs) => {
   })
 }
 
+// Retorna o autor com mais blogs
+const mostBlogs = (blogs) => {
+  if (blogs.length === 0) return null
+
+  const counts = {}
+
+  // Contar quantidade de blogs por autor
+  blogs.forEach(blog => {
+    counts[blog.author] = (counts[blog.author] || 0) + 1
+  })
+
+  // Encontrar o autor com mais blogs
+  let topAuthor = null
+  let maxBlogs = 0
+
+  for (const author in counts) {
+    if (counts[author] > maxBlogs) {
+      maxBlogs = counts[author]
+      topAuthor = author
+    }
+  }
+
+  return {
+    author: topAuthor,
+    blogs: maxBlogs
+  }
+}
+
 module.exports = {
   dummy,
   totalLikes,
-  favoriteBlog
+  favoriteBlog,
+  mostBlogs
 }
