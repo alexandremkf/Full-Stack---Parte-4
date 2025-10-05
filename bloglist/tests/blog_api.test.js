@@ -151,6 +151,24 @@ test('blog without url is not added', async () => {
   assert.strictEqual(response.body.length, initialBlogs.length)
 })
 
+test('deletion of a blog succeeds with status code 204 if id is valid', async () => {
+  const blogsAtStart = await api.get('/api/blogs').then(res => res.body)
+  const blogToDelete = blogsAtStart[0]
+
+  await api.delete(`/api/blogs/${blogToDelete.id}`).expect(204)
+
+  const blogsAtEnd = await api.get('/api/blogs').then(res => res.body)
+  const titles = blogsAtEnd.map(b => b.title)
+
+  assert.strictEqual(blogsAtEnd.length, blogsAtStart.length - 1)
+  assert.ok(!titles.includes(blogToDelete.title))
+})
+
+test('deletion fails with status code 400 if id is invalid', async () => {
+  const invalidId = '5a3d5da59070081a82a3445'
+  await api.delete(`/api/blogs/${invalidId}`).expect(400)
+})
+
 // Fecha conexão com Mongo após todos os testes
 after(async () => {
   await mongoose.connection.close()

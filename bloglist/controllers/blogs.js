@@ -1,5 +1,6 @@
 const blogsRouter = require('express').Router()
 const Blog = require('../models/blog')
+const mongoose = require('mongoose')
 
 // Listar todos os blogs
 blogsRouter.get('/', async (req, res) => {
@@ -29,7 +30,13 @@ blogsRouter.post('/', async (req, res) => {
 
 // Remover um blog
 blogsRouter.delete('/:id', async (req, res) => {
-  await Blog.findByIdAndDelete(req.params.id)
+  const id = req.params.id
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ error: 'invalid id' })
+  }
+
+  await Blog.findByIdAndDelete(id)
   res.status(204).end()
 })
 
