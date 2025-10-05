@@ -169,6 +169,28 @@ test('deletion fails with status code 400 if id is invalid', async () => {
   await api.delete(`/api/blogs/${invalidId}`).expect(400)
 })
 
+test('updating likes of a blog succeeds with valid id', async () => {
+  const blogsAtStart = await api.get('/api/blogs').then(res => res.body)
+  const blogToUpdate = blogsAtStart[0]
+
+  const updatedData = { likes: blogToUpdate.likes + 1 }
+
+  const result = await api
+    .put(`/api/blogs/${blogToUpdate.id}`)
+    .send(updatedData)
+    .expect(200)
+    .expect('Content-Type', /application\/json/)
+
+  assert.strictEqual(result.body.likes, blogToUpdate.likes + 1)
+})
+
+test('updating a blog fails with status code 400 if id is invalid', async () => {
+  const invalidId = '5a3d5da59070081a82a3445'
+  const updatedData = { likes: 10 }
+
+  await api.put(`/api/blogs/${invalidId}`).send(updatedData).expect(400)
+})
+
 // Fecha conexão com Mongo após todos os testes
 after(async () => {
   await mongoose.connection.close()

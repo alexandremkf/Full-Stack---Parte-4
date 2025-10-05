@@ -40,4 +40,24 @@ blogsRouter.delete('/:id', async (req, res) => {
   res.status(204).end()
 })
 
+// Atualizar um blog
+blogsRouter.put('/:id', async (req, res) => {
+  const id = req.params.id
+  const body = req.body
+
+  // validação do ID
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ error: 'invalid id' })
+  }
+
+  // Atualiza o blog e retorna o novo documento
+  const updatedBlog = await Blog.findByIdAndUpdate(
+    id,
+    { likes: body.likes },
+    { new: true, runValidators: true, context: 'query' }
+  )
+
+  res.json(updatedBlog)
+})
+
 module.exports = blogsRouter
