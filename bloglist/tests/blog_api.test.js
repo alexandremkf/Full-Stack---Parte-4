@@ -98,6 +98,25 @@ test('a valid blog can be added via POST', async () => {
   assert.ok(titles.includes('New Blog Post'))
 })
 
+test('if likes property is missing, it defaults to 0', async () => {
+  const newBlog = {
+    title: 'Blog Without Likes',
+    author: 'No Likes Author',
+    url: 'http://example.com/nolikes'
+    // likes está ausente
+  }
+
+  // POST para criar o blog
+  const response = await api
+    .post('/api/blogs')
+    .send(newBlog)
+    .expect(201)
+    .expect('Content-Type', /application\/json/)
+
+  // Verifica se likes foi definido como 0
+  assert.strictEqual(response.body.likes, 0)
+})
+
 // Fecha conexão com Mongo após todos os testes
 after(async () => {
   await mongoose.connection.close()
