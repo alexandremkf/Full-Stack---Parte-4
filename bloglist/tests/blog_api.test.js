@@ -4,8 +4,32 @@ const mongoose = require('mongoose')
 const supertest = require('supertest')
 const app = require('../app')
 const Blog = require('../models/blog')
+const User = require('../models/user')
+const bcrypt = require('bcrypt')
+const jwt = require('jsonwebtoken')
+
+let token // token global para os testes
 
 const api = supertest(app)
+
+beforeEach(async () => {
+  await Blog.deleteMany({})
+  await User.deleteMany({})
+
+  // cria um usuário para testes
+  const passwordHash = await bcrypt.hash('testpass', 10)
+  const user = new User({ username: 'testuser', passwordHash })
+  const savedUser = await user.save()
+
+  // gera token
+  const userForToken = { username: savedUser.username, id: savedUser._id }
+  token = jwt.sign(userForToken, process.env.SECRET)
+
+  // insere blogs iniciais vinculados a user
+  const blogObjects = initialBlogs.map(blog => new Blog({ ...blog, user: savedUser._id }))
+  const promiseArray = blogObjects.map(blog => blog.save())
+  await Promise.all(promiseArray)
+})
 
 const initialBlogs = [
   {
@@ -84,10 +108,12 @@ test('a valid blog can be added via POST', async () => {
 
   // Faz o POST
   await api
-    .post('/api/blogs')
-    .send(newBlog)
-    .expect(201) // ou 201 dependendo do seu backend
-    .expect('Content-Type', /application\/json/)
+  .post('/api/blogs')
+  .set('Authorization', `Bearer ${token}`)
+  .send(newBlog)
+  .expect(201)
+  .expect('Content-Type', /application\/json/)
+
 
   // Verifica se o número de blogs aumentou
   const response = await api.get('/api/blogs')
@@ -108,13 +134,28 @@ test('if likes property is missing, it defaults to 0', async () => {
 
   // POST para criar o blog
   const response = await api
-    .post('/api/blogs')
-    .send(newBlog)
-    .expect(201)
-    .expect('Content-Type', /application\/json/)
+  .post('/api/blogs')
+  .set('Authorization', `Bearer ${token}`)
+  .send(newBlog)
+  .expect(201)
+  .expect('Content-Type', /application\/json/)
 
   // Verifica se likes foi definido como 0
   assert.strictEqual(response.body.likes, 0)
+})
+
+test('adding a blog fails with status 401 if token is not provided', async () => {
+  const newBlog = {
+    title: 'Unauthorized Blog',
+    author: 'No Token Author',
+    url: 'http://example.com/unauthorized',
+    likes: 3
+  }
+
+  await api
+    .post('/api/blogs')
+    .send(newBlog)
+    .expect(401)
 })
 
 test('blog without title is not added', async () => {
