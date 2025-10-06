@@ -19,10 +19,12 @@ blogsRouter.get('/', async (req, res) => {
   res.json(blogs)
 })
 
-// Criar um blog (usuário autenticado)
+// Criar um blog (usuário autenticado) usando middleware tokenExtractor
 blogsRouter.post('/', async (req, res) => {
   const body = req.body
-  const token = getTokenFrom(req)
+
+  // token agora vem do middleware
+  const token = req.token
 
   // Verifica se há token
   if (!token) {
