@@ -2,6 +2,7 @@ const blogsRouter = require('express').Router()
 const Blog = require('../models/blog')
 const User = require('../models/user')
 const mongoose = require('mongoose')
+const { tokenExtractor, userExtractor } = require('../utils/middleware')
 
 // Listar todos os blogs
 blogsRouter.get('/', async (req, res) => {
@@ -9,8 +10,9 @@ blogsRouter.get('/', async (req, res) => {
   res.json(blogs)
 })
 
-// Criar um blog
-blogsRouter.post('/', async (req, res) => {
+
+// Criar um blog (protegido por token)
+blogsRouter.post('/', tokenExtractor, userExtractor, async (req, res) => {
   const body = req.body
 
   // Checagem de title e url
@@ -18,12 +20,8 @@ blogsRouter.post('/', async (req, res) => {
     return res.status(400).json({ error: 'title or url missing' })
   }
 
-  // Pega um usuário do banco para ser o criador do blog
-  const users = await User.find({})
-  if (users.length === 0) {
-    return res.status(400).json({ error: 'No users found in DB' })
-  }
-  const user = users[0] // por enquanto, só pega o primeiro usuário
+  // Usuário autenticado via token
+  const user = req.user
 
   const blog = new Blog({
     title: body.title,
