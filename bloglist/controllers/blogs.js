@@ -1,8 +1,17 @@
 const blogsRouter = require('express').Router()
 const Blog = require('../models/blog')
 const User = require('../models/user')
+const jwt = require('jsonwebtoken')
 const mongoose = require('mongoose')
-const { tokenExtractor, userExtractor } = require('../utils/middleware')
+
+// Função para pegar token do header Authorization
+const getTokenFrom = request => {
+  const authorization = request.get('authorization')
+  if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
+    return authorization.substring(7)
+  }
+  return null
+}
 
 // Listar todos os blogs
 blogsRouter.get('/', async (req, res) => {
@@ -10,19 +19,35 @@ blogsRouter.get('/', async (req, res) => {
   res.json(blogs)
 })
 
-
-// Criar um blog (protegido por token)
-blogsRouter.post('/', tokenExtractor, userExtractor, async (req, res) => {
+// Criar um blog (usuário autenticado)
+blogsRouter.post('/', async (req, res) => {
   const body = req.body
+  const token = getTokenFrom(req)
 
-  // Checagem de title e url
-  if (!body.title || !body.url) {
-    return res.status(400).json({ error: 'title or url missing' })
+  // Verifica se há token
+  if (!token) {
+    return res.status(401).json({ error: 'token missing' })
   }
 
-  // Usuário autenticado via token
-  const user = req.user
+  // Decodifica o token
+  let decodedToken
+  try {
+    decodedToken = jwt.verify(token, process.env.SECRET)
+  } catch (error) {
+    return res.status(401).json({ error: 'token invalid' })
+  }
 
+  if (!decodedToken.id) {
+    return res.status(401).json({ error: 'token invalid' })
+  }
+
+  // Pega o usuário do banco
+  const user = await User.findById(decodedToken.id)
+  if (!user) {
+    return res.status(400).json({ error: 'user not found' })
+  }
+
+  // Cria o blog
   const blog = new Blog({
     title: body.title,
     author: body.author,
@@ -33,11 +58,10 @@ blogsRouter.post('/', tokenExtractor, userExtractor, async (req, res) => {
 
   const savedBlog = await blog.save()
 
-  // Adiciona o blog na lista de blogs do usuário
+  // Adiciona o blog no usuário
   user.blogs = user.blogs.concat(savedBlog._id)
   await user.save()
 
-  // Popula o usuário antes de enviar a resposta
   const populatedBlog = await savedBlog.populate('user', { username: 1, name: 1 })
   res.status(201).json(populatedBlog)
 })
@@ -59,12 +83,10 @@ blogsRouter.put('/:id', async (req, res) => {
   const id = req.params.id
   const body = req.body
 
-  // validação do ID
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({ error: 'invalid id' })
   }
 
-  // Atualiza o blog e retorna o novo documento
   const updatedBlog = await Blog.findByIdAndUpdate(
     id,
     { likes: body.likes },

@@ -1,3 +1,5 @@
+require('dotenv').config()
+console.log('SECRET:', process.env.SECRET)
 const app = require('./app')
 const http = require('http')
 const config = require('./utils/config')
