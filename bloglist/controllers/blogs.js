@@ -68,12 +68,43 @@ blogsRouter.post('/', async (req, res) => {
   res.status(201).json(populatedBlog)
 })
 
-// Remover um blog
+// Remover um blog (somente criador)
 blogsRouter.delete('/:id', async (req, res) => {
   const id = req.params.id
 
+  // Verifica se o ID é válido
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({ error: 'invalid id' })
+  }
+
+  const token = req.token
+
+  // Verifica se há token
+  if (!token) {
+    return res.status(401).json({ error: 'token missing' })
+  }
+
+  // Decodifica o token
+  let decodedToken
+  try {
+    decodedToken = jwt.verify(token, process.env.SECRET)
+  } catch (error) {
+    return res.status(401).json({ error: 'token invalid' })
+  }
+
+  if (!decodedToken.id) {
+    return res.status(401).json({ error: 'token invalid' })
+  }
+
+  const blog = await Blog.findById(id)
+
+  if (!blog) {
+    return res.status(404).json({ error: 'blog not found' })
+  }
+
+  // Só o usuário que criou o blog pode deletar
+  if (blog.user.toString() !== decodedToken.id.toString()) {
+    return res.status(403).json({ error: 'only the creator can delete the blog' })
   }
 
   await Blog.findByIdAndDelete(id)
