@@ -5,8 +5,19 @@ const User = require('../models/user')
 usersRouter.post('/', async (request, response) => {
   const { username, name, password } = request.body
 
-  if (!password || password.length < 3) {
-    return response.status(400).json({ error: 'password must be at least 3 characters long' })
+  // validações básicas
+  if (!username || !password) {
+    return response.status(400).json({ error: 'username and password are required' })
+  }
+
+  if (username.length < 3 || password.length < 3) {
+    return response.status(400).json({ error: 'username and password must be at least 3 characters long' })
+  }
+
+  // checa se já existe usuário com mesmo nome
+  const existingUser = await User.findOne({ username })
+  if (existingUser) {
+    return response.status(400).json({ error: 'username must be unique' })
   }
 
   const saltRounds = 10
